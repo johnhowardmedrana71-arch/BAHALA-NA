@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScanCheck: QR-Based Answer Evaluation System</title>
+   
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            width: 100vw;
+            padding: 24px 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background:
+                linear-gradient(180deg, rgba(45, 0, 0, 0.28), rgba(45, 0, 0, 0.48) 58%, rgba(35, 6, 8, 0.9)),
+                url("pantay-login-background.png") center top / 100% auto no-repeat,
+                #3b090b;
+        }
+
+        body::before,
+        body::after {  
+            position: fixed;
+            z-index: 0;
+            width: 280px;
+            aspect-ratio: 1;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            content: '';
+            pointer-events: none;
+        }
+
+        body::before {
+            top: -150px;
+            right: -100px;
+            animation: ambient-drift 18s ease-in-out infinite alternate;
+        }
+
+        body::after {
+            bottom: -190px;
+            left: -120px;
+            width: 360px;
+            animation: ambient-drift 22s ease-in-out -6s infinite alternate-reverse;
+        }
+
+        .welcome-screen {
+            position: relative;
+            z-index: 1;
+            width: min(100% - 32px, 520px);
+            padding: 42px 36px 36px;
+            text-align: center;
+            background: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.68);
+            border-radius: 24px;
+            box-shadow: 0 28px 70px rgba(56, 26, 22, 0.12), 0 4px 14px rgba(56, 26, 22, 0.05);
+            isolation: isolate;
+            animation: welcome-enter 950ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        .welcome-screen::before {
+            position: absolute;
+            z-index: -1;
+            inset: 0 18% auto;
+            height: 2px;
+            border-radius: 50%;
+            background: linear-gradient(90deg, transparent, rgba(128, 0, 0, 0.48), transparent);
+            content: '';
+            animation: accent-reveal 1.2s ease-out 350ms both;
+        }
+
+        .school-logo-frame {
+            position: relative;
+            display: grid;
+            width: min(62vw, 240px);
+            aspect-ratio: 1;
+            place-items: center;
+            margin: 0 auto 22px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 50%;
+            background: #78000b;
+            box-shadow: 0 14px 28px rgba(77, 0, 8, 0.22), inset 0 0 0 5px rgba(255, 255, 255, 0.08);
+        }
+
+        .school-logo-frame::before {
+            position: absolute;
+            inset: -8px;
+            border: 1px solid rgba(120, 0, 11, 0.16);
+            border-top-color: rgba(120, 0, 11, 0.74);
+            border-radius: 50%;
+            content: '';
+            animation: seal-orbit 14s linear 900ms infinite;
+        }
+
+        .school-logo {
+            display: block;
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0 8px 14px rgba(54, 22, 18, 0.12));
+            animation: seal-reveal 1.05s cubic-bezier(0.18, 0.78, 0.24, 1) 180ms both;
+        }
+
+        .welcome-screen h1 {
+            color: maroon;
+            font-size: clamp(22px, 5vw, 30px);
+            letter-spacing: -0.035em;
+            line-height: 1.2;
+            margin-bottom: 10px;
+            animation: content-rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 380ms both;
+        }
+
+        .welcome-screen p {
+            color: #555;
+            font-size: 16px;
+            line-height: 1.5;
+            margin: 0 auto 26px;
+            max-width: 360px;
+            animation: content-rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 520ms both;
+        }
+
+        .continue-button {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            min-height: 52px;
+            padding: 13px 20px;
+            border: 0;
+            border-radius: 9px;
+            background: linear-gradient(110deg, #650000, #8b101b 55%, #650000);
+            background-size: 160% 100%;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(101, 0, 0, 0.18);
+            transition: background-position 350ms ease, transform 250ms ease, box-shadow 250ms ease;
+            animation: content-rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 660ms both;
+        }
+
+        .continue-button::before {
+            position: absolute;
+            top: -60%;
+            bottom: -60%;
+            left: -45%;
+            width: 28%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+            content: '';
+            transform: skewX(-22deg);
+            transition: left 650ms cubic-bezier(0.2, 0.7, 0.2, 1);
+        }
+
+        .continue-button:hover {
+            background-position: 100% 0;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(101, 0, 0, 0.24);
+        }
+
+        .continue-button:hover::before {
+            left: 125%;
+        }
+
+        .continue-button:active {
+            transform: translateY(0) scale(0.99);
+            box-shadow: 0 5px 12px rgba(101, 0, 0, 0.18);
+        }
+
+        .continue-button:focus-visible {
+            outline: 3px solid rgba(128, 0, 0, 0.28);
+            outline-offset: 4px;
+        }
+
+        .wrapper.login-enter {
+            animation: welcome-enter 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        @keyframes welcome-enter {
+            from {
+                opacity: 0;
+                filter: blur(10px);
+                transform: translateY(24px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                filter: blur(0);
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes seal-reveal {
+            from {
+                opacity: 0;
+                filter: blur(8px) drop-shadow(0 8px 14px rgba(54, 22, 18, 0));
+                transform: scale(0.84) rotate(-5deg);
+            }
+            to {
+                opacity: 1;
+                filter: blur(0) drop-shadow(0 8px 14px rgba(54, 22, 18, 0.12));
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        @keyframes content-rise {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes accent-reveal {
+            from {
+                opacity: 0;
+                transform: scaleX(0.15);
+            }
+            to {
+                opacity: 1;
+                transform: scaleX(1);
+            }
+        }
+
+        @keyframes seal-orbit {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes ambient-drift {
+            from {
+                transform: translate3d(0, 0, 0) scale(1);
+            }
+            to {
+                transform: translate3d(-18px, 14px, 0) scale(1.06);
+            }
+        }
+
+        .wrapper {
+            width: 400px;
+            max-width: calc(100% - 32px);
+            background: #fff;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+
+        .wrapper h1 {
+            text-align: center;
+            font-size: 36px;
+            color: maroon;
+            margin-bottom: 5px;
+        }
+
+        .wrapper h2 { 
+            text-align: center;
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+            font-weight: normal;
+        }
+
+        .input-box {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .input-box input {
+            width: 100%;
+            height: 45px;
+            padding: 0 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .input-box input:focus {
+            border-color: maroon;
+        }
+
+        .show-password-container {
+            width: 100%;
+            text-align: left;
+            margin: -5px 0 15px 0;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+
+        .show-password-container input {
+            margin-right: 8px;
+            cursor: pointer;
+            accent-color: maroon;
+        }
+
+        .forgot-password {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .forgot-password a {
+            text-decoration: none;
+            color: maroon;
+            font-size: 15px;
+        }
+
+        .forgot-password a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            width: 100%;
+            height: 45px;
+            border: none;
+            border-radius: 5px;
+            background: maroon;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #600000;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .register-link p {
+            color: #333;
+            font-size: 15px;
+        }
+
+        .register-link a {
+            color: maroon;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 15px;
+            min-height: 20px;
+        }
+
+        .google-login {
+            width: 100%;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .google-note {
+            font-size: 13px;
+            color: #555;
+            margin-top: 10px;
+        }
+
+        .divider {
+            margin: 24px 0 12px;
+            text-align: center;
+            font-size: 14px;
+            color: #777;
+            position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider::before {
+            left: 0;
+        }
+
+        .divider::after {
+            right: 0;
+        }
+
+        @media (max-width: 480px) {
+            .welcome-screen {
+                padding: 32px 20px 26px;
+            }
+
+            .school-logo-frame {
+                width: min(58vw, 200px);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="responsive.css">
+</head>
+<body>
+    <main class="welcome-screen" id="welcomeScreen">
+        <div class="school-logo-frame">
+            <img class="school-logo" src="pantay-school-logo-transparent.png" alt="Pantay Integrated High School seal">
+        </div>
+        <h1>Pantay Integrated High School</h1>
+        <p>Welcome to ScanCheck, the QR-based answer evaluation system.</p>
+        <button class="continue-button" id="continueToLogin" type="button">Continue to Sign In</button>
+    </main>
+
+    <div class="wrapper" id="loginWrapper" hidden>
+        <form id="scanCheckLoginForm">
+            <h1>Sign In</h1>
+            <h2>Teacher Portal</h2>
+
+            <div id="errorDisplay" class="error-message"></div>
+
+            <div class="input-box">
+                <input type="text" id="username" name="username" placeholder="Username or Gmail address" required>
+            </div>
+
+            <div class="input-box" id="passwordBox">
+                <input type="password" id="password" name="password" placeholder="Password" required>
+            </div>
+
+            <div class="show-password-container">
+                <label><input type="checkbox" id="togglePassword"> Show Password</label>
+            </div>
+
+            <div class="forgot-password">
+                <a href="forgorp.html">Forgot Password</a>
+            </div>
+
+            <div class="Login">
+               <button type="submit" class="btn">Sign In</button> 
+            </div>            
+
+            <div class="google-note" style="margin-top: 12px; text-align: center; color: #555;">
+                To sign in with Google, leave the password field blank and select the button below. You will be redirected to Google's sign-in page.
+            </div>
+
+            <div class="register-link">
+                <p>Don't have an account <a href="register.html">Register</a></p>
+            </div>
+
+            <div class="divider">OR</div>
+
+            <div class="google-login">
+                <button id="googleSignInBtn" class="btn" type="button">Sign in with Google</button>
+                <p class="google-note">Sign in securely with your Google account. Enter your password only on Google's sign-in page.</p>
+                <p id="backendStatus" class="google-note" style="margin-top:8px;color:#b22;">Checking the backend connection...</p>
+            </div>
+        </form>
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        if (localStorage.getItem('currentScanCheckUser')) {
+            window.location.href = "dashboard.html";
+        } else {
+            document.getElementById('continueToLogin').addEventListener('click', function() {
+                document.getElementById('welcomeScreen').hidden = true;
+                const loginWrapper = document.getElementById('loginWrapper');
+                loginWrapper.hidden = false;
+                loginWrapper.classList.add('login-enter');
+                document.getElementById('username').focus();
+            });
+        }
+
+        const loginForm = document.getElementById('scanCheckLoginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const togglePassword = document.getElementById('togglePassword');
+
+        function getApiBase() {
+            return window.scanCheckApiBase;
+        }
+
+        togglePassword.addEventListener('change', function() {
+            if (this.checked) {
+                passwordInput.type = 'text';
+            } else {
+                passwordInput.type = 'password';
+            }
+        });
+
+        loginForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            errorDisplay.innerText = "";
+
+            if (username.includes('@') && !/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(username)) {
+                errorDisplay.innerText = "Enter a valid Gmail address ending in @gmail.com.";
+                return;
+            }
+
+            try {
+                const apiBase = getApiBase();
+
+                const response = await fetch(`${apiBase}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    errorDisplay.innerText = data.message;
+                    return;
+                }
+
+                // Save the user data in localStorage to keep the login persistent.
+                localStorage.setItem('currentScanCheckUser', JSON.stringify(data.user));
+                window.location.href = "dashboard.html";
+
+            } catch (err) {
+                errorDisplay.innerText = "Unable to connect to the server. Make sure the backend is running.";
+            }
+        });
+
+        async function checkBackend() {
+            const statusEl = document.getElementById('backendStatus');
+            try {
+                const apiBase = getApiBase();
+                const response = await fetch(`${apiBase}/api/health`);
+                if (!response.ok) {
+                    statusEl.innerText = 'Unable to reach the backend. Make sure the server is running.';
+                    return;
+                }
+                const data = await response.json();
+                if (!data.ok) {
+                    statusEl.innerText = 'The backend health check failed.';
+                    statusEl.style.color = '#b22';
+                    return;
+                }
+
+                statusEl.innerText = data.mongoConnected
+                    ? 'Backend and database are connected.'
+                    : 'The backend is running, but the database is unavailable.';
+                statusEl.style.color = data.mongoConnected ? '#1a7f37' : '#b22';
+            } catch (err) {
+                statusEl.innerText = 'Unable to reach the backend. Make sure the server is running.';
+                statusEl.style.color = '#b22';
+            }
+        }
+
+        document.getElementById('googleSignInBtn').addEventListener('click', function() {
+            errorDisplay.innerText = '';
+            try {
+                const apiBase = getApiBase();
+                window.location.href = `${apiBase}/auth/google`;
+            } catch (err) {
+                errorDisplay.innerText = 'Unable to connect to the server. Make sure the backend is running.';
+            }
+        });
+
+        checkBackend();
+    </script>
+</body>
+</html>
